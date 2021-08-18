@@ -16,23 +16,8 @@ def get_stock_price(ticker, startdate, enddate):
         stock.history(start=startdate, end=enddate)).reset_index()  # create a df for historical price of the stock
     return stock_df 
 
-df = get_stock_price("TLS.AX", "2013-01-01", "2019-12-31")
-df = df.set_index("Date")
+df = get_stock_price("TLS.AX", "2013-01-01", "2020-12-31")
 
 
-# Visualise the closing price history
-def plot_close(series):
-    plt.figure(figsize=(16, 8))
-    plt.title('Close Price History')
-    plt.plot(series)
-    plt.xlabel('Date', fontsize=18)
-    plt.ylabel('Close Price', fontsize=18)
-    plt.show()
-
-# Create a new dataframe with only the Close column
-data = df.filter(['Close'])
-# Convert the dataframe to numpy array
-dataset = data.values
-# Get the number of rows to train the model on
-training_data_len = math.ceil(len(dataset) * 0.8)
-
+train_df = df.iloc[:1620,4:5].values
+test_df = df.iloc[1620:,4:5].values
