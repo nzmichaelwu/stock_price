@@ -8,10 +8,12 @@ from datetime import date, timedelta
 import regex as re
 
 import plotly.graph_objs as go
+from plotly.subplots import make_subplots
 
 import xgboost as xgb
 from xgboost import plot_importance, plot_tree
 from sklearn.model_selection import GridSearchCV
+from sklearn.metrics import mean_squared_error
 
 from global_functions import add_datepart, add_lags
 
@@ -79,14 +81,24 @@ corr_matrix = df_lags[features].corr()
 corr_matrix['close'].sort_values(ascending=False) # based on this correlation matrix, we are going to use lags as features, rather than the date features
 
 '''
+    Shift label column and drop invalid samples
+'''
+df_lags['close'] = df_lags['close'].shift(-1)
+
+df_lags = df_lags.loc[10:] # because of close_lag_10
+df_lags = df_lags[:-1] # because of shifting close price
+
+df_lags.index = range(len(df_lags))
+
+'''
     train, validation, test split
     70% on train, 15% on validation, 15% on test
 '''
 test_size = 0.15
 val_size = 0.15
 
-test_split_idx = int(df.shape[0] * (1-test_size))
-val_split_idx = int(df.shape[0] * (1-(val_size+test_size)))
+test_split_idx = int(df_lags.shape[0] * (1-test_size))
+val_split_idx = int(df_lags.shape[0] * (1-(val_size+test_size)))
 
 df_train = df_lags.loc[:val_split_idx].copy()
 df_val = df_lags.loc[val_split_idx+1:test_split_idx].copy()
@@ -120,9 +132,9 @@ y_test = df_test['close']
 '''
 
 parameters = {
-    'n_estimators': [100, 200, 300, 400],
-    'learning_rate': [0.001, 0.003, 0.005, 0.01, 0.03, 0.05],
-    'max_depth': [3, 5, 8, 10],
+    'n_estimators': [100, 200, 300],
+    'learning_rate': [0.001, 0.01, 0.03],
+    'max_depth': [3, 5, 8],
     'min_child_weight': [1, 3, 5],
     'subsample': [0.5, 0.65, 0.8],
     'colsample_bytree': [0.5, 0.8, 0.9],
@@ -138,3 +150,58 @@ clf.fit(X_train, y_train)
 print(f'hyperparameter tuning took {time.time() - start_time} seconds.')
 print(f'Best params: {clf.best_params_}')
 print(f'Best validation score = {clf.best_score_}')
+
+'''
+clf.best_params_
+{'colsample_bytree': 0.9,
+ 'learning_rate': 0.03,
+ 'max_depth': 8,
+ 'min_child_weight': 3,
+ 'n_estimators': 200,
+ 'random_state': 1234,
+ 'subsample': 0.65}
+'''
+
+model = xgb.XGBRegressor(colsample_bytree=0.9,
+                        learning_rate=0.03,
+                        max_depth=8,
+                        min_child_weight=3,
+                        n_estimators=200,
+                        subsample=0.65
+                    )
+
+model.fit(X_train, y_train, eval_set=eval_set, verbose=True)
+
+'''
+    predictions
+'''
+y_pred = model.predict(X_test)
+
+print(f'mean squared error = {mean_squared_error(y_test, y_pred)}')
+
+predicted_prices = df_lags.loc[test_split_idx+1:][['date', 'close']].copy() # use df_lags here because we drop the first 10 rows above due to lags
+predicted_prices['pred_close'] = y_pred
+
+fig = make_subplots(rows=2, cols=1)
+fig.add_trace(go.Scatter(x=df.date, y=df.close, # use the original df here
+                         name='Truth',
+                         marker_color='LightSkyBlue'), row=1, col=1)
+
+fig.add_trace(go.Scatter(x=predicted_prices.date,
+                         y=predicted_prices.pred_close,
+                         name='Prediction',
+                         marker_color='MediumPurple'), row=1, col=1)
+
+fig.add_trace(go.Scatter(x=predicted_prices.date,
+                         y=y_test,
+                         name='Truth',
+                         marker_color='LightSkyBlue',
+                         showlegend=False), row=2, col=1)
+
+fig.add_trace(go.Scatter(x=predicted_prices.date,
+                         y=y_pred,
+                         name='Prediction',
+                         marker_color='MediumPurple',
+                         showlegend=False), row=2, col=1)
+
+fig.show()

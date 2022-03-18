@@ -6,4 +6,4 @@
 *.html
 *.iml
 *.xml
-stock_env/
+.stock_venv/
