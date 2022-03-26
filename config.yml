@@ -1,0 +1,17 @@
+out:  # output file locations
+  LOGS: output/logs
+  FIGS: output/figures
+  IMGS: output/images
+  DATA: output/data
+  MODL: output/model
+
+chart_output:
+  WRITE: true # boolean whether to save chart HTML files.
+  SHOW: false # boolean whether to display chart inline.
+  IMAGE: true # boolean to save an image snapshot of the chart
+  WIDTH: 800
+  HEIGHT: 600
+  SCALE: 1.2
+
+vars:
+  N: 10 # number of days to lag

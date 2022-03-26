@@ -1,11 +1,13 @@
 # Import libraries
-import math, os, time
+import math, os, time, sys
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 import yfinance as yf
 from datetime import date, timedelta
 import regex as re
+import yaml
+import subprocess
 
 import plotly.graph_objs as go
 from plotly.subplots import make_subplots
@@ -15,12 +17,37 @@ from xgboost import plot_importance, plot_tree
 from sklearn.model_selection import GridSearchCV
 from sklearn.metrics import mean_squared_error
 
-from global_functions import add_datepart, add_lags
+from global_functions import add_datepart, add_lags, chart_output
+
+sys.path.append('..')
+from helper_funcs.helper_funcs import util as hf
+
+# pandas display options
+pd.options.display.max_columns = None
+pd.options.display.max_rows = 350
+pd.options.display.max_colwidth = 0
+
+cfg = hf.DotDict(yaml.safe_load(open('config.yml')))
+
+pyfile = hf.fileloc(globals())
+logger = hf.setup_logging(__name__, f'{cfg.out.LOGS}/{pyfile}.txt', add_ts=True); logger.l = lambda ls: logger.lbase(ls, globals())
+logname = logger.handlers[1].baseFilename.split('/')[-1].split('.')[0]
+
+gitstat = subprocess.run(['git', 'rev-parse', '--verify', 'HEAD'], capture_output=True)
+git_commit_short_sha = gitstat.stdout[:7].decode('utf-8')
+logger.l('git_commit_short_sha')
+logger.info(f"Git Branch:\n{subprocess.check_output(['git', 'branch']).decode('utf8')}")
+
+## Plot Setup
+# space for saving
+if cfg.chart_output.WRITE: os.makedirs(f'{cfg.out.FIGS}/{logname}', exist_ok=True)
+if cfg.chart_output.IMAGE: os.makedirs(f'{cfg.out.IMGS}/{logname}', exist_ok=True)
+
 
 # variables
 prev_date = date.today() - timedelta(days=1)
 prev_date_formated = prev_date.strftime("%Y-%m-%d")
-N = 10 # number of days to lag
+
 
 # Get stock quote
 def get_stock_price(ticker, startdate, enddate):

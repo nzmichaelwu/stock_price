@@ -1,6 +1,13 @@
 import numpy as np
 import regex as re
 import pandas as pd
+import yaml
+import sys
+
+sys.path.append('..')
+from helper_funcs.helper_funcs import util as hf
+
+cfg = hf.DotDict(yaml.safe_load(open('config.yml')))
 
 # helper function that adds columns relevant to a date (e.g. is_month_end)
 # source: https://docs.fast.ai/tabular.core.html#add_datepart
@@ -55,3 +62,60 @@ def add_lags(df, N, lag_cols):
         df_w_lags = pd.merge(df_w_lags, train_shift, on=merging_keys, how='left')
     
     return df_w_lags
+
+
+def chart_output(
+    fig,
+    figpre,
+    lognamestr, 
+    loggername='__main__',
+    chart_height=cfg.chart_output.HEIGHT,
+    chart_width=cfg.chart_output.WIDTH,
+    chart_scale=cfg.chart_output.SCALE,
+    write_html = cfg.chart_output.WRITE,
+    write_img = cfg.chart_output.IMAGE,
+    watermark=True,
+    save_short=True
+):
+    """
+    write out or show charts according to config settings
+    
+    fig: (obj) the plotly figure object
+    figpre: (str) prefix of figure to uniquely identify in the run
+    lognamestr: (str) the logname determined in the calling function, e.g. dirname_scriptname_timestamp
+    loggername: (str) the name property of the logger object
+    chart_height: (int) output pixel height of images
+    chart_width: (int) output pixel width of images
+    chart_scale: (float) scale factor applied to images. Larger increases text size
+    watermark: (bool) whether to include the chart name as an annotation in the chart
+    save_short: (bool) whether to include the full logname string when saving the file to logs
+    """
+    
+    loc_logger = logging.getLogger(loggername)
+    figname = f"{figpre}_{lognamestr}"
+
+    if cfg.chart_output.SHOW: fig.show() 
+    
+    if watermark:  # only for file output
+        fig.add_annotation(
+            text=figname,
+            xref="paper",
+            yref="paper",
+            x=1,
+            y=0,
+            showarrow=False,
+            xanchor='right',
+            yanchor='bottom',
+            textangle=-90,
+            font={'size':6, 'color':'lightgrey'},
+        )
+    if save_short: figname = f"{figpre}"
+    if write_html: fig.write_html(f"{cfg.out.FIGS}/{lognamestr}/{figname}.html")
+    if write_img:
+        fig.write_image(
+            f"{cfg.out.IMGS}/{lognamestr}/{figname}.png",
+            width=chart_width/chart_scale,
+            height=chart_height/chart_scale,
+            scale=chart_scale
+        )
+    loc_logger.info(f'{figname} produced')
