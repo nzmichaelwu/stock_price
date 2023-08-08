@@ -7,5 +7,6 @@
 *.iml
 *.xml
 .stock_venv/
+stock_env/
 *.txt
 *.img
