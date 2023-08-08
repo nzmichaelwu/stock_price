@@ -1,0 +1,12 @@
+# Default ignored files
+/shelf/
+/workspace.xml
+.DS_Store
+*.pyc
+*.html
+*.iml
+*.xml
+.stock_venv/
+stock_env/
+*.txt
+*.img
